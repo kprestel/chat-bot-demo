@@ -3,7 +3,7 @@ name = "chat-bot-demo"
 version = "0.1.0"
 description = "A Textual chatbot demo with local file-reading tool support."
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 dependencies = [
   "pydantic-ai>=1.67.0",
   "textual>=0.70.0",
