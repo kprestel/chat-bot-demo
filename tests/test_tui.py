@@ -22,9 +22,11 @@ async def test_tui_smoke_flow() -> None:
     async with app.run_test() as pilot:
         await pilot.pause()
         composer = app.query_one("#composer", Input)
-        composer.insert_text_at_cursor("What is the pricing?")
+        composer.insert_text_at_cursor("What is the pricing and what are the support hours?")
         await composer.action_submit()
         await pilot.pause()
 
-        assert "Sources: pricing.md" in app.chat_events[-1].message
-        assert "pricing.md" in app.tool_events[-1]
+        assert "Topics: pricing, support" in app.chat_events[-1].message
+        assert "Agents: pricing specialist, support specialist" in app.chat_events[-1].message
+        assert any("handoff coordinator -> pricing specialist" in event for event in app.tool_events)
+        assert any("support specialist.read_document support_playbook.md" in event for event in app.tool_events)

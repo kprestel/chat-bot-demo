@@ -62,7 +62,10 @@ class ChatBotDemoApp(App[None]):
         with Horizontal(id="body"):
             yield RichLog(id="chat-panel", markup=True, wrap=True, highlight=True)
             yield RichLog(id="tool-panel", markup=True, wrap=True, highlight=True)
-        yield Input(placeholder="Ask about pricing, refunds, support, or company info.", id="composer")
+        yield Input(
+            placeholder="Ask a support-triage question that may involve pricing, refunds, support, or company info.",
+            id="composer",
+        )
         yield Footer()
 
     def on_mount(self) -> None:
@@ -71,12 +74,12 @@ class ChatBotDemoApp(App[None]):
         self.chat_events.append(
             TurnView(
                 speaker="Assistant",
-                message="Ask a question about the bundled business documents.",
+                message="Ask a support-triage question and I will route it to the right specialists.",
             )
         )
-        self.tool_events.append("Tool activity: waiting for the first request.")
-        chat_log.write("[b]Assistant[/b]: Ask a question about the bundled business documents.")
-        tool_log.write("[b]Tool activity[/b]: waiting for the first request.")
+        self.tool_events.append("Activity: waiting for the first request.")
+        chat_log.write("[b]Assistant[/b]: Ask a support-triage question and I will route it to the right specialists.")
+        tool_log.write("[b]Activity[/b]: waiting for the first request.")
 
     @on(Input.Submitted, "#composer")
     async def handle_submit(self, event: Input.Submitted) -> None:
@@ -100,16 +103,29 @@ class ChatBotDemoApp(App[None]):
             status.update(self._status_text(error=str(exc)))
             return
 
-        for line in result.tool_events:
+        for line in result.activity_events:
             self.tool_events.append(line)
-            if "->" in line:
-                tool_log.write(line.replace("->", "-> [red]", 1) + "[/red]")
+            if line.startswith("handoff"):
+                tool_log.write(f"[bold cyan]{line}[/bold cyan]")
+            elif "->" in line:
+                tool_log.write(f"[yellow]{line}[/yellow]")
             else:
-                tool_log.write(f"[b]{line}[/b]")
+                tool_log.write(line)
 
-        rendered_message = result.assistant_message
-        if result.sources:
-            rendered_message = f"{rendered_message}\nSources: {', '.join(result.sources)}"
+        reply = result.reply
+        rendered_message = reply.answer
+        if reply.topics_used:
+            rendered_message += f"\nTopics: {', '.join(reply.topics_used)}"
+        if reply.agents_consulted:
+            rendered_message += f"\nAgents: {', '.join(reply.agents_consulted)}"
+        if reply.citations:
+            rendered_message += "\nCitations:"
+            for citation in reply.citations:
+                rendered_message += f"\n- {citation.source}: {citation.excerpt}"
+        if reply.follow_up_questions:
+            rendered_message += "\nFollow-ups:"
+            for item in reply.follow_up_questions:
+                rendered_message += f"\n- {item}"
 
         chat_log.write(f"[b]Assistant[/b]: {rendered_message}")
         self.chat_events.append(TurnView(speaker="Assistant", message=rendered_message))
